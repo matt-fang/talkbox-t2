@@ -1,9 +1,10 @@
 #include "AudioTools.h"
 #include "WiFi.h"
 
-const char* SSID   = "monkeyphone";
-const char* PASS   = "password";
-const char* SERVER_IP = "172.20.10.2"; // THIS GOOD! DONT CHANGE -3/22/26
+const char* SSID   = "bingowireless2g";
+const char* PASS   = "draco10935";
+// const char* SERVER_IP = "172.20.10.2"; // t-2-1 (monkeyphone) -3/22/26
+const char* SERVER_IP = "10.0.0.47"; // mac mini (bingowireless2g) -3/22/26
 const int   SERVER_AUDIO_PORT   = 5000;
 const int   SERVER_POT_PORT   = 5001;
 
@@ -20,6 +21,9 @@ I2SStream in;
 StreamCopy copier_in(audio_client, in, 256);
 
 void connectToWiFi() {
+    WiFi.mode(WIFI_STA);
+    WiFi.disconnect();
+    delay(500);
     WiFi.begin(SSID, PASS);
     while (WiFi.status() != WL_CONNECTED) {
         Serial.println("Connecting to WiFi...");
@@ -31,7 +35,7 @@ void connectToWiFi() {
 void connectToServer(String port = "both") {
     if (port == "audio" || port == "both") {
         while (!audio_client.connect(SERVER_IP, SERVER_AUDIO_PORT)) {
-            Serial.println("Retrying server audio... " + SERVER_AUDIO_IP_PORT_STRING);
+            Serial.println("Connecting to server audio port... " + SERVER_AUDIO_IP_PORT_STRING);
             delay(1000);
         }
         Serial.println("Connected to server audio");
@@ -39,7 +43,7 @@ void connectToServer(String port = "both") {
 
     if (port == "pot" || port == "both") {
         while (!pot_client.connect(SERVER_IP, SERVER_POT_PORT)) {
-            Serial.println("Retrying server pot... " + SERVER_POT_IP_PORT_STRING);
+            Serial.println("Connecting to server pot port... " + SERVER_POT_IP_PORT_STRING);
             delay(1000);
         }
         Serial.println("Connected to server pot");
@@ -61,11 +65,13 @@ void setupMic() {
     Serial.println("Mic is running");
 }
 
+// MARK: POT WORKS - JUST LAGGY ON SERVER -3/22/26
 void streamPot(void * pvParameters) {
     for (;;) {
         if (!pot_client.connected()) {
             Serial.println("Lost connection, reconnecting...");
-            connectToServer();
+            connectToServer("pot");
+            vTaskDelay(pdMS_TO_TICKS(1000));
             continue;
         }
 
@@ -80,7 +86,8 @@ void streamMic(void * pvParameters) {
     for (;;) {
         if (!audio_client.connected()) {
             Serial.println("Lost connection, reconnecting...");
-            connectToServer();
+            connectToServer("mic");
+            vTaskDelay(pdMS_TO_TICKS(1000));
             continue;
         }
         copier_in.copy();
@@ -90,31 +97,54 @@ void streamMic(void * pvParameters) {
 void setup() {
     Serial.begin(115200);
 
-    connectToWiFi();
-    connectToServer("both");
+    // connectToWiFi();
+    // connectToServer("audio");
     setupMic();
     
-    xTaskCreatePinnedToCore(
-        streamMic,
-        "Stream Mic to Server",
-        16000,
-        NULL,
-        1,
-        NULL,
-        1
-    );
+    // xTaskCreatePinnedToCore(
+    //     streamMic,
+    //     "Stream Mic to Server",
+    //     16000,
+    //     NULL,
+    //     1,
+    //     NULL,
+    //     1
+    // );
 
-    xTaskCreatePinnedToCore(
-        streamPot,
-        "Stream Pot to Server",
-        4096,
-        NULL,
-        0,
-        NULL,
-        0
-    );
+    // xTaskCreatePinnedToCore(
+    //     streamPot,
+    //     "Stream Pot to Server",
+    //     4096,
+    //     NULL,
+    //     0,
+    //     NULL,
+    //     0
+    // );
 }
 
 void loop() {
-    vTaskDelete(NULL);
+
+    // TEST: NO WIFI JUST MIC
+    int32_t buffer[512];
+    size_t bytes = in.readBytes((uint8_t*)buffer, sizeof(buffer));
+
+    if (bytes > 0) {
+        int32_t peak = 0;
+        for (int i = 0; i < bytes / 4; i++) {
+            if (abs(buffer[i]) > abs(peak)) peak = buffer[i];
+        }
+        Serial.println(peak);
+    }
+
+    // // TEST: NO MULTITHREAD OR POT
+    // while (!audio_client.connected()) {
+    //     Serial.println("Lost connection, reconnecting...");
+    //     connectToServer("audio");
+    //     vTaskDelay(pdMS_TO_TICKS(1000));
+    //     continue;
+    // }
+
+    // copier_in.copy();
+
+    // vTaskDelete(NULL);
 }
