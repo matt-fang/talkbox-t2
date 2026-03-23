@@ -11,13 +11,13 @@ String SERVER_AUDIO_IP_PORT_STRING = String(SERVER_IP) + ":" + String(SERVER_AUD
 String SERVER_POT_IP_PORT_STRING = String(SERVER_IP) + ":" + String(SERVER_POT_PORT);
 
 const int POT_PIN          = 34;
-const int POT_PERIOD_MS = 50;
+const int POT_PERIOD_MS = 500;
 
-WiFiClient server_audio;
-WiFiClient server_pot;
+WiFiClient audio_client;
+WiFiClient pot_client;
 I2SStream in;
 
-StreamCopy copier_in(server_audio, in, 256);
+StreamCopy copier_in(audio_client, in, 256);
 
 void connectToWiFi() {
     WiFi.begin(SSID, PASS);
@@ -30,7 +30,7 @@ void connectToWiFi() {
 
 void connectToServer(String port = "both") {
     if (port == "audio" || port == "both") {
-        while (!server_audio.connect(SERVER_IP, SERVER_AUDIO_PORT)) {
+        while (!audio_client.connect(SERVER_IP, SERVER_AUDIO_PORT)) {
             Serial.println("Retrying server audio... " + SERVER_AUDIO_IP_PORT_STRING);
             delay(1000);
         }
@@ -38,7 +38,7 @@ void connectToServer(String port = "both") {
     }
 
     if (port == "pot" || port == "both") {
-        while (!server_pot.connect(SERVER_IP, SERVER_POT_PORT)) {
+        while (!pot_client.connect(SERVER_IP, SERVER_POT_PORT)) {
             Serial.println("Retrying server pot... " + SERVER_POT_IP_PORT_STRING);
             delay(1000);
         }
@@ -63,27 +63,26 @@ void setupMic() {
 
 void streamPot(void * pvParameters) {
     for (;;) {
-        if (!server_pot.connected()) {
+        if (!pot_client.connected()) {
             Serial.println("Lost connection, reconnecting...");
             connectToServer();
             continue;
         }
 
         float potNorm = 1.0f - (analogRead(POT_PIN) / 4095.0f); // reversed: CW = low
-        server_pot.println(potNorm);
+        pot_client.println(potNorm);
 
-        vTaskDelay(POT_PERIOD_MS / portTICK_PERIOD_MS);
+        vTaskDelay(pdMS_TO_TICKS(POT_PERIOD_MS));
     }
 }
 
 void streamMic(void * pvParameters) {
     for (;;) {
-        if (!server_audio.connected()) {
+        if (!audio_client.connected()) {
             Serial.println("Lost connection, reconnecting...");
             connectToServer();
             continue;
         }
-
         copier_in.copy();
     }
 }
@@ -92,7 +91,7 @@ void setup() {
     Serial.begin(115200);
 
     connectToWiFi();
-    connectToServer();
+    connectToServer("both");
     setupMic();
     
     xTaskCreatePinnedToCore(
@@ -110,7 +109,7 @@ void setup() {
         "Stream Pot to Server",
         4096,
         NULL,
-        1,
+        0,
         NULL,
         0
     );
