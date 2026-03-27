@@ -106,15 +106,15 @@ void setup() {
     connectToServer("audio");
     setupMic();
     
-    // xTaskCreatePinnedToCore(
-    //     streamMic,
-    //     "Stream Mic to Server",
-    //     16000,
-    //     NULL,
-    //     1,
-    //     NULL,
-    //     1
-    // );
+    xTaskCreatePinnedToCore(
+        streamMic,
+        "Stream Mic to Server",
+        16000,
+        NULL,
+        1,
+        NULL,
+        1
+    );
 
     // xTaskCreatePinnedToCore(
     //     streamPot,
@@ -128,17 +128,5 @@ void setup() {
 }
 
 void loop() {
-
-    // TEST: NO MULTITHREAD OR POT
-    while (!audio_client.connected()) {
-        Serial.println("Lost connection, reconnecting...");
-        connectToServer("audio"); 
-        
-        // MARK: THIS WORKS - IT CONNECTS TO AUDIO
-
-    }
-
-    copier_in.copy();
-
-    // vTaskDelete(NULL);
+    vTaskDelete(NULL);
 }
