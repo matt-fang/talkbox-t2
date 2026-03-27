@@ -18,7 +18,7 @@ WiFiClient audio_client;
 WiFiClient pot_client;
 I2SStream in;
 
-StreamCopy copier_in(audio_client, in, 256);
+StreamCopy copier_in(audio_client, in, 512);
 
 void connectToWiFi() {
     WiFi.mode(WIFI_STA);
@@ -97,8 +97,8 @@ void streamMic(void * pvParameters) {
 void setup() {
     Serial.begin(115200);
 
-    // connectToWiFi();
-    // connectToServer("audio");
+    connectToWiFi();
+    connectToServer("audio");
     setupMic();
     
     // xTaskCreatePinnedToCore(
@@ -124,27 +124,16 @@ void setup() {
 
 void loop() {
 
-    // TEST: NO WIFI JUST MIC
-    int32_t buffer[512];
-    size_t bytes = in.readBytes((uint8_t*)buffer, sizeof(buffer));
+    // TEST: NO MULTITHREAD OR POT
+    while (!audio_client.connected()) {
+        Serial.println("Lost connection, reconnecting...");
+        connectToServer("audio"); 
+        
+        // MARK: THIS WORKS - IT CONNECTS TO AUDIO
 
-    if (bytes > 0) {
-        int32_t peak = 0;
-        for (int i = 0; i < bytes / 4; i++) {
-            if (abs(buffer[i]) > abs(peak)) peak = buffer[i];
-        }
-        Serial.println(peak);
     }
 
-    // // TEST: NO MULTITHREAD OR POT
-    // while (!audio_client.connected()) {
-    //     Serial.println("Lost connection, reconnecting...");
-    //     connectToServer("audio");
-    //     vTaskDelay(pdMS_TO_TICKS(1000));
-    //     continue;
-    // }
-
-    // copier_in.copy();
+    copier_in.copy();
 
     // vTaskDelete(NULL);
 }
