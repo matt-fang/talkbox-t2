@@ -7,9 +7,9 @@
 #define LED_TYPE    WS2812B
 #define COLOR_ORDER GRB
 
-const char* SSID = "monkeyphone";
-const char* PASS = "password";
-const int   AUDIO_PORT = 5000;
+const char* SSID = "bingowireless2g";
+const char* PASS = "draco10935";
+const int   AUDIO_PORT = 6000;
 const int   POT_PORT = 5001;
 
 const int POT_PIN = 34;
@@ -48,7 +48,8 @@ void connectToWiFi() {
         Serial.println("Connecting to WiFi...");
         delay(500);
     }
-    Serial.println("WiFi connected");
+    Serial.println("WiFi connected at IP:");
+    Serial.println(WiFi.localIP());
 }
 
 void setupServer(String type = "both") {
@@ -132,8 +133,9 @@ void readPot(void * pvParameters) {
     for (;;) {
         if (!pot_client || !pot_client.connected()) {
             pot_client = pot_server.available();
-            
             Serial.println("Waiting for pot client...");
+
+            delay(1000);
             continue;
         }
 
@@ -161,8 +163,9 @@ void readSpeaker(void * pvParameters) {
     for (;;) {
         if (!audio_client || !audio_client.connected()) {
             audio_client = audio_server.available();
-
             Serial.println("Waiting for audio client...");
+
+            delay(1000);
             continue;
         }
 
@@ -178,8 +181,8 @@ void setup() {
     Serial.begin(115200);
 
     connectToWiFi();
-    setupLEDs();
-    setupServer("both");
+    // setupLEDs();
+    setupServer("audio");
 
     xTaskCreatePinnedToCore(
         readSpeaker,
@@ -191,15 +194,15 @@ void setup() {
         1
     );
 
-    xTaskCreatePinnedToCore(
-        readPot,
-        "Read Client Pot to LEDs",
-        16000,
-        NULL,
-        0,
-        NULL,
-        1
-    );
+    // xTaskCreatePinnedToCore(
+    //     readPot,
+    //     "Read Client Pot to LEDs",
+    //     16000,
+    //     NULL,
+    //     0,
+    //     NULL,
+    //     1
+    // );
 }
 
 void loop() {

@@ -8,8 +8,8 @@
 
 const char* SSID   = "bingowireless2g";
 const char* PASS   = "draco10935";
-// const char* SERVER_IP = "172.20.10.2"; // t-2-1 (monkeyphone) -3/22/26
 const char* SERVER_IP = "10.0.0.47"; // mac mini (bingowireless2g) -3/22/26
+// const char* SERVER_IP = "10.0.0.135"; // tiny talkbox (bingowireless2g) -3/28/26
 const int   SERVER_AUDIO_PORT   = 6000;
 const int   SERVER_POT_PORT   = 5001;
 
