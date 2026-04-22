@@ -7,7 +7,7 @@
 #define LED_TYPE    WS2812B
 #define COLOR_ORDER GRB
 
-const char* SSID = "bingowireless2g";
+const char* SSID = "bingowireless2g_EXT";
 const char* PASS = "draco10935";
 const int   AUDIO_PORT = 6000;
 const int   POT_PORT = 5001;
@@ -46,7 +46,8 @@ void connectToWiFi() {
     WiFi.begin(SSID, PASS);
     while (WiFi.status() != WL_CONNECTED) {
         Serial.println("Connecting to WiFi...");
-        delay(500);
+        Serial.println(WiFi.RSSI());
+        delay(2000);
     }
     Serial.println("WiFi connected at IP:");
     Serial.println(WiFi.localIP());
@@ -135,7 +136,7 @@ void readPot(void * pvParameters) {
             pot_client = pot_server.available();
             Serial.println("Waiting for pot client...");
 
-            delay(1000);
+            vTaskDelay(pdMS_TO_TICKS(1000));
             continue;
         }
 
@@ -165,11 +166,11 @@ void readSpeaker(void * pvParameters) {
             audio_client = audio_server.available();
             Serial.println("Waiting for audio client...");
 
-            delay(1000);
+            vTaskDelay(pdMS_TO_TICKS(1000));
             continue;
         }
 
-        Serial.println("Found audio client");
+        // Serial.println("Found audio client");
 
         copier_out.copy();
 
@@ -181,6 +182,7 @@ void setup() {
     Serial.begin(115200);
 
     connectToWiFi();
+    setupSpeaker();
     // setupLEDs();
     setupServer("audio");
 
