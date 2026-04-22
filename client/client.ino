@@ -6,10 +6,10 @@
 // nc -l -p 6000 | play -t raw -r 16000 -e signed -b 32 -c 1 -
 // 
 
-const char* SSID   = "bingowireless2g";
+const char* SSID   = "bingowireless2g_EXT";
 const char* PASS   = "draco10935";
-const char* SERVER_IP = "10.0.0.47"; // mac mini (bingowireless2g) -3/22/26
-// const char* SERVER_IP = "10.0.0.135"; // tiny talkbox (bingowireless2g) -3/28/26
+// const char* SERVER_IP = "10.0.0.47"; // mac mini (bingowireless2g) -3/22/26
+const char* SERVER_IP = "10.0.0.135"; // tiny talkbox (bingowireless2g_EXT) -4/20/26 | (bingowireless2g) -3/28/26
 const int   SERVER_AUDIO_PORT   = 6000;
 const int   SERVER_POT_PORT   = 5001;
 
@@ -18,6 +18,9 @@ String SERVER_POT_IP_PORT_STRING = String(SERVER_IP) + ":" + String(SERVER_POT_P
 
 const int POT_PIN          = 34;
 const int POT_PERIOD_MS = 500;
+
+volatile unsigned long last_server_connect_time;
+bool is_connected_to_server = false;
 
 WiFiClient audio_client;
 WiFiClient pot_client;
@@ -32,9 +35,11 @@ void connectToWiFi() {
     WiFi.begin(SSID, PASS);
     while (WiFi.status() != WL_CONNECTED) {
         Serial.println("Connecting to WiFi...");
-        delay(500);
+        Serial.println(WiFi.RSSI());
+        delay(2000);
     }
-    Serial.println("WiFi connected");
+    Serial.println("WiFi connected at IP:");
+    Serial.println(WiFi.localIP());
 }
 
 void connectToServer(String port = "both") {
@@ -44,6 +49,8 @@ void connectToServer(String port = "both") {
             delay(1000);
         }
         Serial.println("Connected to server audio");
+        last_server_connect_time = millis();
+        is_connected_to_server = true;
     }
 
     if (port == "pot" || port == "both") {
@@ -73,7 +80,7 @@ void setupMic() {
 // MARK: POT WORKS - JUST LAGGY ON SERVER -3/22/26
 void streamPot(void * pvParameters) {
     for (;;) {
-        if (!pot_client.connected()) {
+        if (!is_connected_to_server) {
             Serial.println("Lost connection, reconnecting...");
             connectToServer("pot");
             vTaskDelay(pdMS_TO_TICKS(1000));
@@ -89,15 +96,41 @@ void streamPot(void * pvParameters) {
 
 void streamMic(void * pvParameters) {
     for (;;) {
-        if (!audio_client.connected()) {
+        if (!is_connected_to_server) {
             Serial.println("Lost connection, reconnecting...");
-            connectToServer("mic");
+            connectToServer("audio");
             vTaskDelay(pdMS_TO_TICKS(1000));
             continue;
         }
+        
         copier_in.copy();
+        last_server_connect_time = millis();
+
+        // Serial.println(bytesCopied);
+
+        // if (bytesCopied <= 0) {
+        //     Serial.println("Zero bytes copied, closing client connection...");
+        //     audio_client.stop();
+        // }
     }
 }
+
+void manageWiFi(void * pvParameters) {
+    for(;;) {
+        if (last_server_connect_time <= millis() - 5000 && is_connected_to_server) {
+            Serial.println("Frozen copier detected, closing client connection...");
+            audio_client.stop();
+            is_connected_to_server = false;
+        }
+
+        Serial.print("wifi strength: ");
+        Serial.print(WiFi.RSSI());
+        Serial.print(", connected:");
+        Serial.println(audio_client.connected());
+        vTaskDelay(pdMS_TO_TICKS(1000));
+    }
+}
+
 
 void setup() {
     Serial.begin(115200);
@@ -112,6 +145,16 @@ void setup() {
         16000,
         NULL,
         1,
+        NULL,
+        1
+    );
+
+    xTaskCreatePinnedToCore(
+        manageWiFi,
+        "Manage TCP Connection + Diagonistics",
+        8000,
+        NULL,
+        0,
         NULL,
         1
     );
