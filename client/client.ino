@@ -17,7 +17,7 @@ const int REMOTE_POT_PORT = 5001;
 const int POT_PIN = 34;
 const int POT_PERIOD_MS = 500;
 
-WiFiUDP wifi_udp;
+WiFiUDP udp;
 I2SStream in;
 
 uint8_t buffer[512];
@@ -55,9 +55,9 @@ void streamMic(void* pvParameters) {
   for (;;) {
     in.readBytes(buffer, 512);
 
-    wifi_udp.beginPacket(REMOTE_IP, REMOTE_AUDIO_PORT);
-    wifi_udp.write(buffer, 512);
-    wifi_udp.endPacket();
+    udp.beginPacket(REMOTE_IP, REMOTE_AUDIO_PORT);
+    udp.write(buffer, 512);
+    udp.endPacket();
   }
 }
 
