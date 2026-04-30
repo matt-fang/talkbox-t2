@@ -39,6 +39,8 @@ I2SStream out;
 StreamCopy copier_out(out, audio_client, 256);
 // TODO: add volume stream
 
+bool client_is_connected = false;
+
 String      rxBuffer   = "";
 float       remotePot  = 0.0f;   // received from client
 
@@ -170,7 +172,10 @@ void readSpeaker(void * pvParameters) {
             continue;
         }
 
-        // Serial.println("Found audio client");
+        if (!client_is_connected) {
+            Serial.println("Connected to audio client");
+            client_is_connected = true;
+        }
 
         copier_out.copy();
 
