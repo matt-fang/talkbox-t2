@@ -9,8 +9,8 @@
 const char* SSID   = "bingowireless2g_EXT";
 const char* PASS   = "draco10935";
 // const char* remote_IP = "10.0.0.47"; // mac mini (bingowireless2g) -3/22/26
-const char* REMOTE_IP = "10.0.0.135"; // tiny talkbox (bingowireless2g_EXT) -4/20/26 | (bingowireless2g) -3/28/26
-// const char* REMOTE_IP = "10.0.0.154"; // big talkbox (bingowireless2g_EXT) -4/21/26
+// const char* REMOTE_IP = "10.0.0.135"; // tiny talkbox (bingowireless2g_EXT) -4/20/26 | (bingowireless2g) -3/28/26
+const char* REMOTE_IP = "10.0.0.154"; // big talkbox (bingowireless2g_EXT) -4/21/26
 const int   REMOTE_AUDIO_PORT   = 6000;
 const int   REMOTE_POT_PORT   = 5001;
 
@@ -61,6 +61,7 @@ void connectToRemote(String port = "both") {
         Serial.println("Connected to remote audio");
         last_remote_connect_time = millis();
         is_connected_to_remote_server = true;
+        audio_client.setNoDelay(true);    // on sender
     }
 
     if (port == "pot" || port == "both") {
@@ -166,6 +167,7 @@ void readSpeaker(void * pvParameters) {
         if (!is_connected_to_remote_client) {
             Serial.println("Found audio client");
             is_connected_to_remote_client = true;
+            remote_audio_client.setNoDelay(true);  // on receiver (set this in readSpeaker after client connects)
         }
         
         copier_out.copy();
@@ -179,9 +181,12 @@ void manageWiFi(void * pvParameters) {
         //     audio_client.stop();
         //     is_connected_to_remote_server = false;
         // }
+        
 
         Serial.print("wifi strength: ");
         Serial.print(WiFi.RSSI());
+        Serial.print(", rx available: ");
+        Serial.println(remote_audio_client.available());
         Serial.print(", connected to remote:");
         Serial.print(audio_client.connected());
         Serial.print(", remotes connected:");
@@ -195,7 +200,7 @@ void setup() {
     Serial.begin(115200);
 
     connectToWiFi();
-
+    
     setupMic();
     setupSpeaker();
 
