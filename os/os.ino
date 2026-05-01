@@ -28,16 +28,25 @@ I2SStream out;
 uint8_t tx_buffer[512];
 uint8_t rx_buffer[512];
 
+volatile int tx_bytes = 0;
+volatile int rx_bytes = 0;
+
 void connectToWiFi() {
     WiFi.mode(WIFI_STA);
     WiFi.disconnect();
+
     delay(500);
+
     WiFi.begin(SSID, PASS);
+
     while (WiFi.status() != WL_CONNECTED) {
         Serial.println("Connecting to WiFi...");
         Serial.println(WiFi.RSSI());
         delay(2000);
     }
+
+    WiFi.setSleep(WIFI_PS_NONE);
+
     Serial.println("WiFi connected at IP:");
     Serial.println(WiFi.localIP());
 }
@@ -77,6 +86,7 @@ void streamMic(void* pvParameters) {
         if (byte_size) {
             udp_out.beginPacket(REMOTE_IP, REMOTE_AUDIO_PORT);
             udp_out.write(tx_buffer, byte_size);
+            tx_bytes += byte_size;
             udp_out.endPacket();
         } else {
             vTaskDelay(pdMS_TO_TICKS(1));
@@ -89,6 +99,7 @@ void readSpeaker(void* pvParameters) {
         int packet_size = udp_in.parsePacket();
         if (packet_size) {
             udp_in.read(rx_buffer, 512);
+            rx_bytes += packet_size;
             out.write(rx_buffer, packet_size);
         } else {
             vTaskDelay(pdMS_TO_TICKS(1));
@@ -100,6 +111,9 @@ void manageWiFi(void* pvParameters) {
     for (;;) {
         Serial.print("wifi strength: ");
         Serial.println(WiFi.RSSI());
+        Serial.printf("tx: %d bytes/sec, rx: %d bytes/sec\n", tx_bytes, rx_bytes);
+        tx_bytes = 0;
+        rx_bytes = 0;
         vTaskDelay(pdMS_TO_TICKS(1000));
     }
 }
